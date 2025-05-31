@@ -6,7 +6,12 @@ from openai import OpenAI
 import re
 from PyPDF2 import PdfReader
 
+import logging
+
 # --- CONFIGURATION ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", "your-api-key")
 MODEL = "gpt-4.1-mini" # Use a smaller model for cost efficiency
 
@@ -112,15 +117,15 @@ def call_openai_and_parse(prompt, file_name, image_data=None):
         result["filename"] = file_name
         return result
     except json.JSONDecodeError as e:
-        st.error(f"JSON parse error for {file_name}: {e}")
-        st.error(f"Response was:\n{raw}")
-        st.error("Please check the file format and content.")
+        logger.debug(f"JSON parse error for {file_name}: {e}")
+        logger.debug(f"Response was:\n{raw}")
+        logger.debug("Please check the file format and content.")
         return None
 
 def extract_data_from_pdf(pdf_file):
     text = extract_text_from_pdf(pdf_file)
     if not text.strip():
-        st.error(f"No selectable text found in {pdf_file.name}. Consider uploading as image instead.")
+        logger.debug(f"No selectable text found in {pdf_file.name}. Consider uploading as image instead.")
         return None
     prompt = build_prompt_with_text(text)
     return call_openai_and_parse(prompt, pdf_file.name)
@@ -133,8 +138,11 @@ def extract_data_from_image(image_file):
 def extract_data_from_receipt(receipt_file):
     if receipt_file.name.lower().endswith('.pdf'):
         return extract_data_from_pdf(receipt_file)
-    else:
+    elif receipt_file.name.lower().endswith(('.jpg', '.jpeg', '.png')):
         return extract_data_from_image(receipt_file)
+    else:
+        logger.error(f"Unsupported file type: {receipt_file.name}")
+        return None
 
 # --- STREAMLIT UI ---
 
@@ -156,7 +164,7 @@ if uploaded_files:
                 st.session_state.receipts.append(data)
                 st.session_state.previews[file.name] = file
             else:
-                st.error(f"Could not extract data from {file.name} {data}")
+                st.error(f"Could not extract data from {file.name}")
                 # TODO: Add fallback if PDF is a scanned image
 
 # Show data editor
