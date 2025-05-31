@@ -5,6 +5,8 @@ import pandas as pd
 from openai import OpenAI
 import re
 from PyPDF2 import PdfReader
+from datetime import datetime
+
 
 import logging
 
@@ -80,6 +82,27 @@ def build_prompt():
     )
     return prompt
 
+def standardize_date(date_str):
+    """
+    Try to parse a date string and return it in yyyy-mm-dd format.
+    If parsing fails, return the original string.
+    """
+    if not date_str or not isinstance(date_str, str):
+        return date_str
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%m/%d/%Y", "%d %b %Y", "%d %B %Y"):
+        try:
+            dt = datetime.strptime(date_str.strip(), fmt)
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    # Try dateutil if available for more flexibility
+    try:
+        from dateutil import parser
+        dt = parser.parse(date_str, fuzzy=True)
+        return dt.strftime("%Y-%m-%d")
+    except Exception:
+        return date_str
+
 def call_openai_and_parse(prompt, file_name, image_data=None):
     """
     Calls OpenAI API with the given prompt.
@@ -115,6 +138,9 @@ def call_openai_and_parse(prompt, file_name, image_data=None):
     try:
         result = json.loads(cleaned)
         result["filename"] = file_name
+        # Standardize the date field if present
+        if "date" in result:
+            result["date"] = standardize_date(result["date"])
         return result
     except json.JSONDecodeError as e:
         logger.debug(f"JSON parse error for {file_name}: {e}")
