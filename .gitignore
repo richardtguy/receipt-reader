@@ -1,0 +1,17 @@
+/.streamlit
+__pycache__/
+/*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+*.env
+*.DS_Store
+*.log
+*.sqlite3
+/.venv
+/venv
+/.pytest_cache
+/.ipynb_checkpoints
+/output/
+.cache/
